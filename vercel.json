@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Takstassistenten – Helsekontor Forvaltning</title>
+<style>
+  :root {
+    --bg: #fef4e8;
+    --teal: #1989ac;
+    --teal-dark: #126b89;
+    --teal-light: #e8f5fa;
+    --text: #1a1a1a;
+    --muted: #666;
+    --border: #d9cfc4;
+    --card-bg: #fff;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); font-family: 'Segoe UI', sans-serif; color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* HEADER */
+  header { background: var(--card-bg); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 14px; }
+  header .logo-text { font-size: 17px; font-weight: 700; color: var(--teal); letter-spacing: -0.3px; }
+  header .logo-sub { font-size: 12px; color: var(--muted); }
+  header .badge { margin-left: auto; background: var(--teal); color: #fff; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 12px; }
+
+  /* TABS */
+  .tabs-wrapper { background: var(--card-bg); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 0; }
+  .tab-btn { padding: 13px 20px; font-size: 14px; font-weight: 500; color: var(--muted); border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.15s; }
+  .tab-btn.active { color: var(--teal); border-bottom-color: var(--teal); font-weight: 600; }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+
+  /* MAIN */
+  main { flex: 1; max-width: 860px; width: 100%; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ROLE SELECTOR */
+  .role-selector { display: flex; gap: 10px; flex-wrap: wrap; }
+  .role-btn { padding: 8px 18px; border: 2px solid var(--border); border-radius: 20px; background: var(--card-bg); font-size: 13px; cursor: pointer; transition: all 0.15s; color: var(--text); }
+  .role-btn.active { border-color: var(--teal); background: var(--teal); color: #fff; }
+
+  /* SPECIALIST TOGGLE */
+  .specialist-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--teal-light); border-radius: 8px; font-size: 13px; }
+  .specialist-row label { cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--teal-dark); }
+  .specialist-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--teal); cursor: pointer; }
+
+  /* CHAT CONTAINER */
+  .chat-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-height: 420px; box-shadow: var(--shadow); }
+  .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; }
+
+  /* MESSAGES */
+  .msg { display: flex; gap: 10px; max-width: 100%; }
+  .msg.user { flex-direction: row-reverse; }
+  .msg-bubble { padding: 11px 15px; border-radius: 12px; font-size: 14px; line-height: 1.55; max-width: 78%; }
+  .msg.user .msg-bubble { background: var(--teal); color: #fff; border-bottom-right-radius: 3px; }
+  .msg.ai .msg-bubble { background: #f5f0eb; color: var(--text); border-bottom-left-radius: 3px; }
+
+  /* ANSWER CARD */
+  .answer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; max-width: 78%; }
+  .answer-card .card-header { background: var(--teal); color: #fff; padding: 8px 14px; font-size: 12px; font-weight: 600; display: flex; gap: 8px; align-items: center; }
+  .answer-card .card-body { padding: 13px 15px; font-size: 14px; line-height: 1.6; color: var(--text); }
+  .answer-card .card-body strong { color: var(--teal-dark); }
+  .code-tag { display: inline-block; background: var(--teal); color: #fff; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin: 0 3px 3px 0; }
+  .tips-section { margin-top: 10px; padding: 10px 12px; background: #fffbe6; border-left: 3px solid #f0c040; border-radius: 4px; font-size: 13px; }
+  .tips-section strong { color: #7a5c00; }
+
+  /* TYPING */
+  .typing { display: flex; align-items: center; gap: 5px; padding: 12px 15px; }
+  .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); animation: bounce 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-8px)} }
+
+  /* INPUT ROW */
+  .input-row { display: flex; gap: 10px; padding: 14px; border-top: 1px solid var(--border); background: var(--card-bg); }
+  .chat-input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit; resize: none; min-height: 44px; max-height: 120px; outline: none; transition: border-color 0.15s; }
+  .chat-input:focus { border-color: var(--teal); }
+  .send-btn { background: var(--teal); color: #fff; border: none; border-radius: 8px; padding: 0 20px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+  .send-btn:hover { background: var(--teal-dark); }
+  .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* QUICK QUESTIONS */
+  .quick-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  .quick-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .quick-btn { padding: 7px 13px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; font-size: 13px; cursor: pointer; color: var(--teal-dark); font-weight: 500; transition: all 0.15s; }
+  .quick-btn:hover { background: var(--teal-light); border-color: var(--teal); }
+
+  /* INFO PANEL */
+  .info-panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .info-panel strong { color: var(--text); }
+
+  /* AVATAR */
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--teal-light); border: 2px solid var(--teal); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+  /* ERROR */
+  .error-msg { background: #fff0f0; border: 1px solid #ffb3b3; color: #c00; padding: 10px 14px; border-radius: 8px; font-size: 13px; }
+
+  /* FOOTER */
+  footer { text-align: center; padding: 16px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); background: var(--card-bg); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo-text">⚕ Takstassistenten</div>
+    <div class="logo-sub">av Helsekontor Forvaltning AS</div>
+  </div>
+  <div class="badge">Beta</div>
+</header>
+
+<div class="tabs-wrapper">
+  <button class="tab-btn active" onclick="switchTab('fastlege', this)">Fastlege / Helsesekretær</button>
+  <button class="tab-btn" onclick="switchTab('spesialist', this)">Avtalespesialist</button>
+  <button class="tab-btn" onclick="switchTab('sykepleier', this)">Sykepleier</button>
+</div>
+
+<main>
+
+  <!-- ROLE SELECTOR (Fastlege-tab) -->
+  <div id="role-row" style="display:flex; flex-direction:column; gap:8px;">
+    <div class="role-selector">
+      <button class="role-btn active" onclick="setRole('lege', this)">👨‍⚕️ Jeg er lege</button>
+      <button class="role-btn" onclick="setRole('sekretar', this)">💼 Jeg er helsesekretær</button>
+    </div>
+    <div class="specialist-row" id="specialist-row" style="display:none;">
+      <label>
+        <input type="checkbox" id="spesialist-toggle" onchange="toggleSpesialist()"/>
+        Spesialist i allmennmedisin (2dd/2dk)
+      </label>
+    </div>
+  </div>
+
+  <!-- QUICK SPØRSMÅL -->
+  <div>
+    <div class="quick-label">Vanlige spørsmål:</div>
+    <div class="quick-btns" id="quick-btns"></div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="chat-box">
+    <div class="messages" id="messages"></div>
+    <div class="input-row">
+      <textarea class="chat-input" id="chat-input" placeholder="Still et spørsmål om takster og koding..." rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <!-- INFO -->
+  <div class="info-panel">
+    <strong>Tips:</strong> Beskriv konsultasjonen din så gir assistenten deg et komplett takstforslag. F.eks: «Pasient 68 år, blodprøver og EKG, kronisk sykdom, 30 min konsultasjon.»
+  </div>
+
+</main>
+
+<footer>Takstassistenten er et hjelpeverktøy – alltid verifiser mot gjeldende normaltariff og HELFO-veileder. © Helsekontor Forvaltning AS</footer>
+
+<script>
+const TABS = {
+  fastlege: {
+    quickLege: [
+      'Takst for blodprøvetaking?',
+      'EKG – hvilken takst?',
+      'Konsultasjon over 20 min?',
+      'Sykemelding + rådgivning',
+      'Hvilke S-takster finnes?',
+      'Beskriv en konsultasjon for meg'
+    ],
+    quickSekretar: [
+      'Hva er 1ak?',
+      'Forskjell på 1ae og 1ag?',
+      'Telefonkonsultasjon takst?',
+      'e-konsultasjon kode?',
+      'Labkoder hva brukes?'
+    ],
+    systemLege: `Du er Takstassistenten, en spesialisert AI-assistent for norske fastleger og allmennpraktikere. Du hjelper med riktig og fullstendig taksting etter Normaltariffen (NAV/HELFO). 
+
+Du gir alltid:
+1. Konkret svar med eksakt takst-kode og honorarBeløp der du kjenner det
+2. Eventuelle tilleggstakster som kan kombineres
+3. En TIPS/HUSK-seksjon med takster legen kan ha glemt
+
+Viktig om takster du ALLTID skal nevne der det er relevant:
+- 1ad/1bd: Grunnhonorarer (konsultasjon dag/kveld)
+- 2ak: Tillegg for konsultasjon over 20 min (kr 98)
+- 2ae: Sykebesøk tillegg
+- 106a: Skriving av epikriser og henvisninger
+- 108: Telefonkonsultasjon
+- 110a/c: E-konsultasjon
+- 109: EKG
+- 651a-d: Spirometri
+- Lab-koder: 811, 812 etc. for blodprøver
+- S-takster (S01-S99): sykepleietillegg for prosedyrer
+- 2dd/2dk: Tillegg for spesialist i allmennmedisin (kun ved spesialiststatus)
+
+Om en lege beskriver en konsultasjon, list opp ALLE relevante takster de bør registrere.
+
+Formater svaret med:
+**TAKSTER:**
+[takst-koder og beløp]
+
+**BEGRUNNELSE:**
+[kort forklaring]
+
+**💡 TIPS/HUSK:**
+[oversett takster de kan ha glemt]
+
+Svar alltid på norsk. Vær presis og konkret.`,
+
+    systemSekretar: `Du er Takstassistenten, en spesialisert AI-assistent for helsesekretærer ved norske legekontor. Du forklarer takster og koding enkelt og tydelig, med fokus på praktisk bruk i EPJ.
+
+Du hjelper med:
+- Forstå hva ulike takster betyr og når de brukes
+- Korrekt registrering i WebMed/Pridok/DIPS
+- Kontrollere at legenes takstlister ser riktige ut
+- Enkel forklaring av Normaltariffen
+
+Forklar alltid:
+1. Hva taksten gjelder
+2. Når den brukes
+3. Eventuelle krav for å bruke den (f.eks. tidsgrenser)
+
+Bruk enkelt språk – helsesekretæren trenger ikke medisinsk detaljkunnskap, men praktisk veiledning.
+
+Svar alltid på norsk.`,
+  },
+  spesialist: {
+    quick: [
+      'Takst for poliklinisk konsultasjon?',
+      'Tillegg for spesialisert undersøkelse?',
+      'Takst ved akutt tilsyn?',
+      'Epikrisetakst?',
+      'Kombinere takster – regler?'
+    ],
+    system: `Du er Takstassistenten, spesialisert for norske avtalespesialister (privatpraktiserende spesialister med driftsavtale). Du hjelper med taksting etter Normaltariffen kapittel II og spesialistenes takstvedlegg.
+
+Relevante takstgrupper:
+- 2ad/2bd: Grunnhonorarer spesialist
+- Tilleggstakster for prosedyrer innen spesialiteten
+- 106a/106b: Epikrise og sakkyndiguttalelse
+- Polikliniske tillegg
+- Spesialitetstilpassede koder
+
+Gi alltid konkrete takst-koder, beløp der du kjenner dem, og TIPS om mulige tilleggstakster.
+
+Formater svaret med **TAKSTER**, **BEGRUNNELSE**, og **💡 TIPS/HUSK**.
+Svar alltid på norsk.`
+  },
+  sykepleier: {
+    quick: [
+      'Hvilke S-takster finnes?',
+      'S01 – hva dekker den?',
+      'Sårskift takst?',
+      'Injeksjon/vaksine takst?',
+      'EKG tatt av sykepleier?'
+    ],
+    system: `Du er Takstassistenten, spesialisert for sykepleiere ved norske legekontor. Du hjelper med S-takster (sykepleietakster) fra Normaltariffen.
+
+Viktige S-takster:
+- S01: Enkle sykepleieoppgaver (sårskift, bandasje)
+- S02: Mer avanserte prosedyrer
+- S11: EKG tatt av sykepleier
+- S22: Injeksjoner/vaksiner
+- S40-S45: Spirometri-relatert
+- S501: Telefonkontakt med pasient av sykepleier
+
+Gi alltid konkret takst-kode og forklaring på når den kan brukes. Presiser om prosedyren krever legeordre.
+
+Formater svaret med **TAKST**, **NÅR BRUKES DEN**, og **💡 HUSK**.
+Svar alltid på norsk.`
+  }
+};
+
+let currentTab = 'fastlege';
+let currentRole = 'lege';
+let erSpesialist = false;
+let chatHistory = { fastlege: [], spesialist: [], sykepleier: [] };
+let isLoading = false;
+
+function getSystemPrompt() {
+  if (currentTab === 'fastlege') {
+    let prompt = currentRole === 'lege' ? TABS.fastlege.systemLege : TABS.fastlege.systemSekretar;
+    if (erSpesialist && currentRole === 'lege') {
+      prompt += '\n\nOBS: Denne legen er spesialist i allmennmedisin og kan bruke takst 2dd (dagtillegg kr 66) og 2dk (tillegg for utvidet konsultasjon kr 133). Husk alltid å nevne disse der det er relevant.';
+    }
+    return prompt;
+  }
+  if (currentTab === 'spesialist') return TABS.spesialist.system;
+  return TABS.sykepleier.system;
+}
+
+function getQuickQuestions() {
+  if (currentTab === 'fastlege') return currentRole === 'lege' ? TABS.fastlege.quickLege : TABS.fastlege.quickSekretar;
+  if (currentTab === 'spesialist') return TABS.spesialist.quick;
+  return TABS.sykepleier.quick;
+}
+
+function renderQuickBtns() {
+  const container = document.getElementById('quick-btns');
+  container.innerHTML = '';
+  getQuickQuestions().forEach(q => {
+    const btn = document.createElement('button');
+    btn.className = 'quick-btn';
+    btn.textContent = q;
+    btn.onclick = () => { document.getElementById('chat-input').value = q; sendMessage(); };
+    container.appendChild(btn);
+  });
+}
+
+function switchTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('role-row').style.display = tab === 'fastlege' ? 'flex' : 'none';
+  renderQuickBtns();
+  renderMessages();
+  showGreeting();
+}
+
+function setRole(role, el) {
+  currentRole = role;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('specialist-row').style.display = role === 'lege' ? 'flex' : 'none';
+  renderQuickBtns();
+  showGreeting();
+}
+
+function toggleSpesialist() {
+  erSpesialist = document.getElementById('spesialist-toggle').checked;
+  showGreeting();
+}
+
+function showGreeting() {
+  const greetings = {
+    fastlege_lege: 'Hei! Jeg er Takstassistenten. Still meg spørsmål om takster, eller beskriv en konsultasjon så setter jeg opp takstlisten for deg. 🩺',
+    fastlege_sekretar: 'Hei! Jeg hjelper deg forstå og kontrollere takster. Spør meg om koder, beløp eller når ulike takster brukes. 💼',
+    spesialist: 'Hei! Jeg er spesialisert på avtalespesialisters takster. Still gjerne spørsmål om koding og honorar. 🏥',
+    sykepleier: 'Hei! Jeg hjelper deg med S-takster for sykepleiere. Spør om koder for prosedyrer, sårskift, injeksjoner og mer. 💉'
+  };
+  const key = currentTab === 'fastlege' ? `fastlege_${currentRole}` : currentTab;
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '';
+  addMessage('ai', greetings[key] || greetings.fastlege_lege, true);
+}
+
+function addMessage(role, text, isGreeting = false) {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  if (role === 'ai') {
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = '⚕';
+    div.appendChild(avatar);
+  }
+
+  if (role === 'ai' && !isGreeting && text.includes('**TAKSTER')) {
+    // Render structured answer card
+    const card = document.createElement('div');
+    card.className = 'answer-card';
+
+    // Extract codes for header tags
+    const codeMatches = text.match(/\b\d[a-z]{1,3}\b|\bS\d{2,3}\b/gi) || [];
+    const uniqueCodes = [...new Set(codeMatches.slice(0, 6))];
+
+    let headerHTML = '<span>📋 Takstforslag</span>';
+    if (uniqueCodes.length) headerHTML += uniqueCodes.map(c => `<span class="code-tag">${c}</span>`).join('');
+
+    card.innerHTML = `<div class="card-header">${headerHTML}</div>`;
+
+    const body = document.createElement('div');
+    body.className = 'card-body';
+
+    // Parse sections
+    let html = text
+      .replace(/\*\*TAKSTER:\*\*/g, '<strong>TAKSTER:</strong>')
+      .replace(/\*\*BEGRUNNELSE:\*\*/g, '<br/><strong>BEGRUNNELSE:</strong>')
+      .replace(/\*\*💡 TIPS\/HUSK:\*\*/g, '')
+      .replace(/\*\*TAKST:\*\*/g, '<strong>TAKST:</strong>')
+      .replace(/\*\*NÅR BRUKES DEN:\*\*/g, '<br/><strong>NÅR BRUKES DEN:</strong>')
+      .replace(/\*\*💡 HUSK:\*\*/g, '')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br/>');
+
+    // Extract and style TIPS section
+    const tipsMatch = text.match(/💡 TIPS\/HUSK:([\s\S]*?)$/) || text.match(/💡 HUSK:([\s\S]*?)$/);
+    if (tipsMatch) {
+      const tipsText = tipsMatch[1].trim().replace(/\n/g, '<br/>');
+      html = html.replace(tipsMatch[0].replace(/\n/g, '<br/>'), '');
+      body.innerHTML = html;
+      const tips = document.createElement('div');
+      tips.className = 'tips-section';
+      tips.innerHTML = `<strong>💡 TIPS/HUSK:</strong><br/>${tipsText}`;
+      body.appendChild(tips);
+    } else {
+      body.innerHTML = html;
+    }
+
+    card.appendChild(body);
+    div.appendChild(card);
+  } else {
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.innerHTML = text.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    div.appendChild(bubble);
+  }
+
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.id = 'typing-indicator';
+  div.innerHTML = '<div class="avatar">⚕</div><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+async function sendMessage() {
+  if (isLoading) return;
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  autoResize(input);
+  addMessage('user', text);
+
+  const histKey = currentTab;
+  chatHistory[histKey].push({ role: 'user', content: text });
+
+  isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+  showTyping();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: chatHistory[histKey],
+        systemPrompt: getSystemPrompt()
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`HTTP ${res.status}: ${err}`);
+    }
+
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Ingen respons fra API.';
+
+    removeTyping();
+    addMessage('ai', reply);
+    chatHistory[histKey].push({ role: 'assistant', content: reply });
+
+    // Trim history to last 10 exchanges
+    if (chatHistory[histKey].length > 20) {
+      chatHistory[histKey] = chatHistory[histKey].slice(-20);
+    }
+  } catch (err) {
+    removeTyping();
+    const msgs = document.getElementById('messages');
+    const errDiv = document.createElement('div');
+    errDiv.className = 'error-msg';
+    errDiv.textContent = `Feil: ${err.message}. Sjekk at ANTHROPIC_API_KEY er satt i Vercel.`;
+    msgs.appendChild(errDiv);
+  } finally {
+    isLoading = false;
+    document.getElementById('send-btn').disabled = false;
+  }
+}
+
+function renderMessages() {
+  // Clear on tab switch
+  document.getElementById('messages').innerHTML = '';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// Init
+renderQuickBtns();
+showGreeting();
+</script>
+</body>
+</html>
